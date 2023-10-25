@@ -1,0 +1,72 @@
+# Complete configurations: https://golangci-lint.run/usage/configuration/
+
+linters:
+  enable:
+    - asasalint
+    - asciicheck
+    - bidichk
+    - bodyclose
+    - contextcheck
+    - durationcheck
+    - errcheck
+    - errname
+    - errorlint
+    - exportloopref
+    - gochecknoglobals
+    - gochecknoinits
+    - gocritic
+    - godot
+    - gofmt
+    - gofumpt
+    - goimports
+    - gomnd
+    - gosec
+    - gosimple
+    - govet
+    - ineffassign
+    - interfacer
+    - misspell
+    - nakedret
+    - nilerr
+    - nilnil
+    - noctx
+    - nolintlint
+    - prealloc
+    - predeclared
+    - promlinter
+    - reassign
+    - revive
+    - rowserrcheck
+    - sqlclosecheck
+    - staticcheck
+    - stylecheck
+    - tenv
+    - testableexamples
+    - thelper
+    - tparallel
+    - unconvert
+    - unparam
+    - unused
+    - usestdlibvars
+    - wastedassign
+
+linters-settings:
+  gosec:
+    excludes:
+      - G404 # Use of weak random number generator (math/rand instead of crypto/rand)
+      - G501 # Blocklisted import crypto/md5: weak cryptographic primitive
+      - G401 #Use of weak cryptographic primitive
+
+  revive:
+    rules:
+      - name: unexported-return
+        disabled: true
+
+output:
+  sort-results: true
+
+issues:
+  exclude-rules:
+    - path: "_test\\.go"
+      linters:
+        - gochecknoglobals
