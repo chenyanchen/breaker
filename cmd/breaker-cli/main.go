@@ -80,27 +80,32 @@ func main() {
 				case *ast.ArrayType:
 					_type = "[]" + v.Elt.(*ast.Ident).Name
 				case *ast.StarExpr:
-					paramType := v.X.(*ast.Ident).Name
-					_type = "*" + paramType
-					if strings.Contains(paramType, ".") { // imported type
-						break
-					}
-					paramIdent, ok := v.X.(*ast.Ident)
-					if !ok {
-						break
-					}
-					if paramIdent.Obj == nil {
+					switch x := v.X.(type) {
+					case *ast.Ident:
+						paramType := x.Name
+						_type = "*" + paramType
+						if strings.Contains(paramType, ".") { // imported type
+							break
+						}
+						paramIdent, ok := v.X.(*ast.Ident)
+						if !ok {
+							break
+						}
+						if paramIdent.Obj == nil {
+							_type = "*" + packageName + "." + paramType // local type
+							break
+						}
+						paramTypeSpec, ok := paramIdent.Obj.Decl.(*ast.TypeSpec)
+						if !ok {
+							break
+						}
+						if _, ok := paramTypeSpec.Type.(*ast.StructType); !ok {
+							break
+						}
 						_type = "*" + packageName + "." + paramType // local type
-						break
+					case *ast.SelectorExpr:
+						_type = "*" + x.X.(*ast.Ident).Name + "." + x.Sel.Name
 					}
-					paramTypeSpec, ok := paramIdent.Obj.Decl.(*ast.TypeSpec)
-					if !ok {
-						break
-					}
-					if _, ok := paramTypeSpec.Type.(*ast.StructType); !ok {
-						break
-					}
-					_type = "*" + packageName + "." + paramType // local type
 				case *ast.Ellipsis:
 					selectorExpr, ok := v.Elt.(*ast.SelectorExpr)
 					if !ok {
