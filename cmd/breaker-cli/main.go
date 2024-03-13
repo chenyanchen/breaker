@@ -78,7 +78,17 @@ func main() {
 				case *ast.SelectorExpr:
 					_type = v.X.(*ast.Ident).Name + "." + v.Sel.Name
 				case *ast.ArrayType:
-					_type = "[]" + v.Elt.(*ast.Ident).Name
+					switch elt := v.Elt.(type) {
+					case *ast.Ident:
+						_type = "[]" + v.Elt.(*ast.Ident).Name
+					case *ast.StarExpr:
+						switch x := elt.X.(type) {
+						case *ast.SelectorExpr:
+							_type = "[]" + "*" + x.X.(*ast.Ident).Name + "." + x.Sel.Name
+						default:
+							panic(fmt.Sprintf("unsupported array type: %T", elt))
+						}
+					}
 				case *ast.StarExpr:
 					switch x := v.X.(type) {
 					case *ast.Ident:
@@ -127,7 +137,17 @@ func main() {
 				case *ast.Ident:
 					_type = v.Name
 				case *ast.ArrayType:
-					_type = "[]" + v.Elt.(*ast.Ident).Name
+					switch elt := v.Elt.(type) {
+					case *ast.Ident:
+						_type = "[]" + v.Elt.(*ast.Ident).Name
+					case *ast.StarExpr:
+						switch x := elt.X.(type) {
+						case *ast.SelectorExpr:
+							_type = "[]" + "*" + x.X.(*ast.Ident).Name + "." + x.Sel.Name
+						default:
+							panic(fmt.Sprintf("unsupported array type: %T", elt))
+						}
+					}
 				case *ast.StarExpr:
 					switch x := v.X.(type) {
 					case *ast.Ident:
