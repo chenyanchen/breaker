@@ -73,6 +73,7 @@ func main() {
 				if len(field.Names) > 0 {
 					paramName = field.Names[0].Name
 				}
+				ellipsis := false
 				var _type string
 				switch v := field.Type.(type) {
 				case *ast.SelectorExpr:
@@ -117,6 +118,7 @@ func main() {
 						_type = "*" + x.X.(*ast.Ident).Name + "." + x.Sel.Name
 					}
 				case *ast.Ellipsis:
+					ellipsis = true
 					selectorExpr, ok := v.Elt.(*ast.SelectorExpr)
 					if !ok {
 						break
@@ -125,7 +127,7 @@ func main() {
 				default:
 					log.Fatalf("unsupported param type: %T", field.Type)
 				}
-				params = append(params, Param{Name: paramName, Type: _type})
+				params = append(params, Param{Name: paramName, Type: _type, Ellipsis: ellipsis})
 			}
 			for i, field := range fieldList.Results.List {
 				paramName := "result" + strconv.Itoa(i)
@@ -233,6 +235,8 @@ func generate(ctx context.Context, pkg Package) (io.Reader, error) {
 		return nil, fmt.Errorf("execute template: %w", err)
 	}
 
+	// io.Copy(os.Stdout, buf)
+
 	data, err := imports.Process("", buf.Bytes(), nil)
 	if err != nil {
 		return nil, fmt.Errorf("goimports: %w", err)
@@ -273,8 +277,9 @@ type Method struct {
 }
 
 type Param struct {
-	Name string
-	Type string
+	Name     string
+	Type     string
+	Ellipsis bool
 }
 
 func implementInterface(iface Interface) Struct {

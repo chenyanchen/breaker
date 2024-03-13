@@ -37,7 +37,14 @@ func (b *{{$StructName}}) {{.Name}}({{range $i, $p := .Params}}{{.Name}} {{.Type
             {{ else }}
                 {{- .Name -}}
             {{ end }}
-        {{- end}} = b.source.{{.Name}}({{range .Params}}{{.Name}}, {{end}})
+        {{- end}} = b.source.{{.Name}}(
+	{{- range .Params -}}
+		{{- if eq .Ellipsis true -}}
+			{{- .Name -}}...
+		{{- else -}}
+			{{- .Name -}},
+		{{- end -}}
+	{{- end -}})
 		return {{$ErrorValue}}
 	})
 	return {{range $i, $r := .Results}}{{if $i}}, {{end}}{{.Name}}{{end}}
