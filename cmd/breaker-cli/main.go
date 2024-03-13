@@ -35,6 +35,8 @@ func main() {
 		log.Fatalf("no packages found")
 	}
 
+	packageName := file[0].Name
+
 	// Extract the interface
 	var interfaces []Interface
 	for ident := range file[0].TypesInfo.Defs {
@@ -77,8 +79,26 @@ func main() {
 					_type = v.X.(*ast.Ident).Name + "." + v.Sel.Name
 				case *ast.ArrayType:
 					_type = "[]" + v.Elt.(*ast.Ident).Name
+				case *ast.StarExpr:
+					paramType := v.X.(*ast.Ident).Name
+					_type = "*" + paramType
+					if strings.Contains(paramType, ".") { // imported type
+						break
+					}
+					paramIdent, ok := v.X.(*ast.Ident)
+					if !ok {
+						break
+					}
+					paramTypeSpec, ok := paramIdent.Obj.Decl.(*ast.TypeSpec)
+					if !ok {
+						break
+					}
+					if _, ok := paramTypeSpec.Type.(*ast.StructType); !ok {
+						break
+					}
+					_type = "*" + packageName + "." + paramType // local type
 				default:
-					log.Fatalf("unsupported param type: %v", field.Type)
+					log.Fatalf("unsupported param type: %T", field.Type)
 				}
 				params = append(params, Param{Name: paramName, Type: _type})
 			}
@@ -93,8 +113,26 @@ func main() {
 					_type = v.Name
 				case *ast.ArrayType:
 					_type = "[]" + v.Elt.(*ast.Ident).Name
+				case *ast.StarExpr:
+					paramType := v.X.(*ast.Ident).Name
+					_type = "*" + paramType
+					if strings.Contains(paramType, ".") { // imported type
+						break
+					}
+					paramIdent, ok := v.X.(*ast.Ident)
+					if !ok {
+						break
+					}
+					paramTypeSpec, ok := paramIdent.Obj.Decl.(*ast.TypeSpec)
+					if !ok {
+						break
+					}
+					if _, ok := paramTypeSpec.Type.(*ast.StructType); !ok {
+						break
+					}
+					_type = "*" + packageName + "." + paramType // local type
 				default:
-					log.Fatalf("unsupported return type: %v", field.Type)
+					log.Fatalf("unsupported return type: %T", field.Type)
 				}
 				returns = append(returns, Param{Name: paramName, Type: _type})
 			}
@@ -114,7 +152,7 @@ func main() {
 
 	// generate code
 	pkg := Package{
-		Name:    file[0].Name,
+		Name:    packageName,
 		Structs: []Struct{implementation},
 	}
 
@@ -150,6 +188,8 @@ func generate(ctx context.Context, pkg Package) (io.Reader, error) {
 	if err = tmpl.Execute(buf, pkg); err != nil {
 		return nil, fmt.Errorf("execute template: %w", err)
 	}
+
+	io.Copy(os.Stdout, buf)
 
 	data, err := imports.Process("", buf.Bytes(), nil)
 	if err != nil {
