@@ -21,7 +21,7 @@ func New{{$StructName}}(source {{$PackageName}}.{{$InterfaceName}}) *{{$StructNa
 }
 
 {{range .Implemented.Methods -}}
-    {{$ErrorValue := "nil" -}}
+    {{$ErrorReturn := "nil" -}}
 func (b *{{$StructName}}) {{.Name}}({{range $i, $p := .Params}}{{.Name}} {{.Type}}, {{end}}) ({{range .Results}}{{.Type}}, {{end}}) {
 	var (
 		{{- range .Results}}
@@ -32,7 +32,7 @@ func (b *{{$StructName}}) {{.Name}}({{range $i, $p := .Params}}{{.Name}} {{.Type
 		{{range $i, $r := .Results -}}
             {{- if $i -}}, {{end}}
             {{- if eq .Type "error" -}}
-                {{$ErrorValue = .Name}}
+                {{$ErrorReturn = .Name}}
                 {{- .Name -}}
             {{ else }}
                 {{- .Name -}}
@@ -45,7 +45,7 @@ func (b *{{$StructName}}) {{.Name}}({{range $i, $p := .Params}}{{.Name}} {{.Type
 			{{- .Name -}},
 		{{- end -}}
 	{{- end -}})
-		return {{$ErrorValue}}
+		return {{$ErrorReturn}}
 	})
 	return {{range $i, $r := .Results}}{{if $i}}, {{end}}{{.Name}}{{end}}
 }
