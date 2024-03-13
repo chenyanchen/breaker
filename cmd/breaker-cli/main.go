@@ -189,8 +189,6 @@ func generate(ctx context.Context, pkg Package) (io.Reader, error) {
 		return nil, fmt.Errorf("execute template: %w", err)
 	}
 
-	io.Copy(os.Stdout, buf)
-
 	data, err := imports.Process("", buf.Bytes(), nil)
 	if err != nil {
 		return nil, fmt.Errorf("goimports: %w", err)

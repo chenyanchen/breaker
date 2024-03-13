@@ -42,6 +42,7 @@ func (b *{{$StructName}}) {{.Name}}({{range $i, $p := .Params}}{{.Name}} {{.Type
 	})
 	return {{range $i, $r := .Results}}{{if $i}}, {{end}}{{.Name}}{{end}}
 }
-{{- end}}
+
+{{end -}}
 {{- end}}
 `
