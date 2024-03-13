@@ -89,6 +89,10 @@ func main() {
 					if !ok {
 						break
 					}
+					if paramIdent.Obj == nil {
+						_type = "*" + packageName + "." + paramType // local type
+						break
+					}
 					paramTypeSpec, ok := paramIdent.Obj.Decl.(*ast.TypeSpec)
 					if !ok {
 						break
@@ -97,6 +101,12 @@ func main() {
 						break
 					}
 					_type = "*" + packageName + "." + paramType // local type
+				case *ast.Ellipsis:
+					selectorExpr, ok := v.Elt.(*ast.SelectorExpr)
+					if !ok {
+						break
+					}
+					_type = "..." + selectorExpr.X.(*ast.Ident).Name + "." + selectorExpr.Sel.Name
 				default:
 					log.Fatalf("unsupported param type: %T", field.Type)
 				}
@@ -121,6 +131,10 @@ func main() {
 					}
 					paramIdent, ok := v.X.(*ast.Ident)
 					if !ok {
+						break
+					}
+					if paramIdent.Obj == nil {
+						_type = "*" + packageName + "." + paramType // local type
 						break
 					}
 					paramTypeSpec, ok := paramIdent.Obj.Decl.(*ast.TypeSpec)
