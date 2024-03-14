@@ -21,8 +21,8 @@ import (
 
 func main() {
 	_package := flag.String("package", "", "The packages named by the import paths")
-	_interface := flag.String("interface", "", "(optional) The interfaces name")
-	output := flag.String("output", "", "The output file name")
+	_interface := flag.String("interface", "", "The interface name")
+	output := flag.String("output", "", "The output file name, default to stdout")
 	flag.Parse()
 
 	cfg := &packages.Config{Mode: packages.NeedName | packages.NeedTypes | packages.NeedTypesInfo}
