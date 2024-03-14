@@ -19,33 +19,25 @@ func New{{$StructName}}(source {{$PackageName}}.{{$InterfaceName}}) *{{$StructNa
 }
 
 {{range .Implemented.Methods -}}
-    {{$ErrorReturn := "nil" -}}
+    {{$ErrorReturn := "" -}}
 func (b *{{$StructName}}) {{.Name}}({{range $i, $p := .Params}}{{.Name}} {{.Type}}, {{end}}) ({{range .Results}}{{.Type}}, {{end}}) {
+	{{/*	Find the error return	*/}}
+	{{- range .Results}}{{- if eq .Type "error" -}}{{$ErrorReturn = .Name}}{{end -}}{{- end -}}
+
+	{{- if eq $ErrorReturn "" -}}
+	return b.source.{{.Name}}({{- range .Params}}{{if eq .Ellipsis true}}{{.Name}}...{{else}}{{.Name}},{{end}}{{end}})
+	{{- else -}}
 	var (
 		{{- range .Results}}
 		{{.Name}} {{.Type}}
 		{{- end}}
 	)
-	_ = b.breaker.Do(func() error {
-		{{range $i, $r := .Results -}}
-            {{- if $i -}}, {{end}}
-            {{- if eq .Type "error" -}}
-                {{$ErrorReturn = .Name}}
-                {{- .Name -}}
-            {{ else }}
-                {{- .Name -}}
-            {{ end }}
-        {{- end}} = b.source.{{.Name}}(
-	{{- range .Params -}}
-		{{- if eq .Ellipsis true -}}
-			{{- .Name -}}...
-		{{- else -}}
-			{{- .Name -}},
-		{{- end -}}
-	{{- end -}})
+	err := b.breaker.Do(func() error {
+		{{range $i, $r := .Results -}}{{- if $i -}},{{end}}{{.Name}}{{end}} = b.source.{{.Name}}({{range .Params}}{{if eq .Ellipsis true}}{{.Name}}...{{else}}{{.Name}},{{end}}{{end}})
 		return {{$ErrorReturn}}
 	})
-	return {{range $i, $r := .Results}}{{if $i}}, {{end}}{{.Name}}{{end}}
+	return {{range .Results}}{{if eq .Name $ErrorReturn }}err,{{else}}{{.Name}},{{end}}{{end}}
+	{{- end -}}
 }
 
 {{end -}}
