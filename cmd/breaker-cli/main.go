@@ -76,58 +76,19 @@ func main() {
 				ellipsis := false
 				var _type string
 				switch v := field.Type.(type) {
-				case *ast.SelectorExpr:
-					_type = v.X.(*ast.Ident).Name + "." + v.Sel.Name
-				case *ast.ArrayType:
-					switch elt := v.Elt.(type) {
-					case *ast.Ident:
-						_type = "[]" + v.Elt.(*ast.Ident).Name
-					case *ast.StarExpr:
-						switch x := elt.X.(type) {
-						case *ast.Ident:
-							_type = "[]" + "*" + packageName + "." + x.Name
-						case *ast.SelectorExpr:
-							_type = "[]" + "*" + x.X.(*ast.Ident).Name + "." + x.Sel.Name
-						default:
-							panic(fmt.Sprintf("unsupported array type: %T", x))
-						}
-					}
+				case *ast.Ident:
+					_type = identName(packageName, v)
 				case *ast.StarExpr:
-					switch x := v.X.(type) {
-					case *ast.Ident:
-						paramType := x.Name
-						_type = "*" + paramType
-						if strings.Contains(paramType, ".") { // imported type
-							break
-						}
-						paramIdent, ok := v.X.(*ast.Ident)
-						if !ok {
-							break
-						}
-						if paramIdent.Obj == nil {
-							_type = "*" + packageName + "." + paramType // local type
-							break
-						}
-						paramTypeSpec, ok := paramIdent.Obj.Decl.(*ast.TypeSpec)
-						if !ok {
-							break
-						}
-						if _, ok := paramTypeSpec.Type.(*ast.StructType); !ok {
-							break
-						}
-						_type = "*" + packageName + "." + paramType // local type
-					case *ast.SelectorExpr:
-						_type = "*" + x.X.(*ast.Ident).Name + "." + x.Sel.Name
-					}
+					_type = starExprName(packageName, v)
+				case *ast.SelectorExpr:
+					_type = selectorExprName(packageName, v)
+				case *ast.ArrayType:
+					_type = arrayTypeName(packageName, v)
+				case *ast.MapType:
+					_type = mapTypeName(packageName, v)
 				case *ast.Ellipsis:
 					ellipsis = true
-					selectorExpr, ok := v.Elt.(*ast.SelectorExpr)
-					if !ok {
-						break
-					}
-					_type = "..." + selectorExpr.X.(*ast.Ident).Name + "." + selectorExpr.Sel.Name
-				case *ast.Ident:
-					_type = v.Name
+					_type = ellipsisName(packageName, v)
 				default:
 					log.Fatalf("unsupported param type: %T", field.Type)
 				}
@@ -141,48 +102,15 @@ func main() {
 				var _type string
 				switch v := field.Type.(type) {
 				case *ast.Ident:
-					_type = v.Name
-				case *ast.ArrayType:
-					switch elt := v.Elt.(type) {
-					case *ast.Ident:
-						_type = "[]" + v.Elt.(*ast.Ident).Name
-					case *ast.StarExpr:
-						switch x := elt.X.(type) {
-						case *ast.SelectorExpr:
-							_type = "[]" + "*" + x.X.(*ast.Ident).Name + "." + x.Sel.Name
-						case *ast.Ident:
-							_type = "[]" + "*" + packageName + "." + x.Name
-						default:
-							panic(fmt.Sprintf("unsupported array type: %T", elt))
-						}
-					}
+					_type = identName(packageName, v)
 				case *ast.StarExpr:
-					switch x := v.X.(type) {
-					case *ast.Ident:
-						paramType := x.Name
-						_type = "*" + paramType
-						if strings.Contains(paramType, ".") { // imported type
-							break
-						}
-						paramIdent, ok := v.X.(*ast.Ident)
-						if !ok {
-							break
-						}
-						if paramIdent.Obj == nil {
-							_type = "*" + packageName + "." + paramType // local type
-							break
-						}
-						paramTypeSpec, ok := paramIdent.Obj.Decl.(*ast.TypeSpec)
-						if !ok {
-							break
-						}
-						if _, ok := paramTypeSpec.Type.(*ast.StructType); !ok {
-							break
-						}
-						_type = "*" + packageName + "." + paramType // local type
-					case *ast.SelectorExpr:
-						_type = "*" + x.X.(*ast.Ident).Name + "." + x.Sel.Name
-					}
+					_type = starExprName(packageName, v)
+				case *ast.SelectorExpr:
+					_type = selectorExprName(packageName, v)
+				case *ast.ArrayType:
+					_type = arrayTypeName(packageName, v)
+				case *ast.MapType:
+					_type = mapTypeName(packageName, v)
 				default:
 					log.Fatalf("unsupported return type: %T", field.Type)
 				}
@@ -228,6 +156,115 @@ func main() {
 		defer writer.Close()
 	}
 	io.Copy(writer, reader)
+}
+
+func identName(pkg string, t *ast.Ident) string {
+	// TODO: do you have a better way to handle basic types?
+
+	// basic types
+	switch t.Name {
+	case "int", "int8", "int16", "int32", "int64",
+		"uint", "uint8", "uint16", "uint32", "uint64",
+		"float32", "float64",
+		"string", "bool", "byte", "rune", "error":
+		return t.Name
+	}
+
+	// package types
+	return pkg + "." + t.Name
+}
+
+func ellipsisName(pkg string, t *ast.Ellipsis) string {
+	var name string
+	switch x := t.Elt.(type) {
+	case *ast.Ident:
+		name = identName(pkg, x)
+	case *ast.SelectorExpr:
+		name = selectorExprName(pkg, x)
+	case *ast.StarExpr:
+		name = starExprName(pkg, x)
+	case *ast.ArrayType:
+		name = arrayTypeName(pkg, x)
+	case *ast.MapType:
+		name = mapTypeName(pkg, x)
+	default:
+		panic(fmt.Sprintf("unsupported ellipsis type: %T", x))
+	}
+	return "..." + name
+}
+
+func selectorExprName(pkg string, t *ast.SelectorExpr) string {
+	switch x := t.X.(type) {
+	case *ast.Ident:
+		return x.Name + "." + t.Sel.Name
+	default:
+		panic(fmt.Sprintf("unsupported selector expr: %T", t))
+	}
+}
+
+func starExprName(pkg string, t *ast.StarExpr) string {
+	var name string
+	switch x := t.X.(type) {
+	case *ast.Ident:
+		name = identName(pkg, x)
+	case *ast.ArrayType:
+		name = arrayTypeName(pkg, x)
+	case *ast.MapType:
+		name = mapTypeName(pkg, x)
+	case *ast.SelectorExpr:
+		name = selectorExprName(pkg, x)
+	default:
+		panic(fmt.Sprintf("unsupported star expr: %T", t))
+	}
+	return "*" + name
+}
+
+func arrayTypeName(pkg string, t *ast.ArrayType) string {
+	var name string
+	switch elt := t.Elt.(type) {
+	case *ast.Ident:
+		name = identName(pkg, elt)
+	case *ast.SelectorExpr:
+		name = selectorExprName(pkg, elt)
+	case *ast.StarExpr:
+		name = starExprName(pkg, elt)
+	case *ast.ArrayType:
+		name = arrayTypeName(pkg, elt)
+	case *ast.MapType:
+		name = mapTypeName(pkg, elt)
+	default:
+		panic(fmt.Sprintf("unsupported array type: %T", elt))
+	}
+	return "[]" + name
+}
+
+func mapTypeName(pkg string, t *ast.MapType) string {
+	var key, value string
+	switch k := t.Key.(type) {
+	case *ast.Ident:
+		key = identName(pkg, k)
+	case *ast.StarExpr:
+		key = starExprName(pkg, k)
+	default:
+		panic(fmt.Sprintf("unsupported map key type: %T", k))
+	}
+
+	switch v := t.Value.(type) {
+	case *ast.Ident:
+		value = identName(pkg, v)
+	case *ast.SelectorExpr:
+		value = selectorExprName(pkg, v)
+	case *ast.StarExpr:
+		value = starExprName(pkg, v)
+	case *ast.ArrayType:
+		value = arrayTypeName(pkg, v)
+	case *ast.MapType:
+		value = mapTypeName(pkg, v)
+	default:
+		panic(fmt.Sprintf("unsupported map value type: %T", v))
+	}
+
+	return fmt.Sprintf("map[%s]%s", key, value)
 }
 
 func generate(ctx context.Context, pkg Package) (io.Reader, error) {
