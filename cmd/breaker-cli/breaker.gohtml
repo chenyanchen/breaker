@@ -2,7 +2,13 @@
 // breaker-cli: https://github.com/chenyanchen/breaker/tree/main/cmd/breaker-cli
 
 {{$PackageName := .Name -}}
+{{$ImportPath := .ImportPath -}}
 package {{$PackageName}}
+
+import (
+	"github.com/chenyanchen/breaker"
+	{{$PackageName}} "{{$ImportPath}}"
+)
 
 {{range .Structs -}}
     {{$StructName := .Name -}}
