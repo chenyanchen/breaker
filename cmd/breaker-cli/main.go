@@ -32,6 +32,9 @@ func main() {
 	if err != nil {
 		log.Fatalf("load packages: %v", err)
 	}
+	if packages.PrintErrors(file) > 0 {
+		log.Fatalf("load packages failed")
+	}
 	//
 	if len(file) == 0 {
 		log.Fatalf("no packages found")

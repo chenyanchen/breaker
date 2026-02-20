@@ -1,7 +1,7 @@
 package breaker
 
 import (
-	"math/rand"
+	"math/rand/v2"
 	"time"
 
 	"github.com/chenyanchen/breaker/internal/rollingwindow"
@@ -14,8 +14,6 @@ const (
 )
 
 type googleBreaker struct {
-	rand *rand.Rand
-
 	k float64
 
 	stat *rollingwindow.RollingWindow
@@ -36,7 +34,6 @@ func WithWindow(size int, interval time.Duration) Option {
 func NewGoogleBreaker(opts ...Option) *googleBreaker {
 	b := &googleBreaker{
 		k:    defaultK,
-		rand: rand.New(rand.NewSource(time.Now().UnixNano())),
 		stat: rollingwindow.NewRollingWindow(defaultSize, defaultInterval),
 	}
 
@@ -78,7 +75,7 @@ func (b *googleBreaker) accept() error {
 		return nil
 	}
 
-	if b.rand.Float64() < dropRatio {
+	if rand.Float64() < dropRatio {
 		return ErrServiceUnavailable
 	}
 

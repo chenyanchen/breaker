@@ -7,6 +7,18 @@ import (
 
 const span = time.Millisecond * 10
 
+type fakeClock struct {
+	current time.Time
+}
+
+func (c *fakeClock) Now() time.Time {
+	return c.current
+}
+
+func (c *fakeClock) Advance(d time.Duration) {
+	c.current = c.current.Add(d)
+}
+
 func TestRollingWindow_Reduce(t *testing.T) {
 	tests := []struct {
 		name           string
@@ -17,7 +29,8 @@ func TestRollingWindow_Reduce(t *testing.T) {
 		{
 			name: "all buckets are valid",
 			windowCreateFn: func() *RollingWindow {
-				rollingWindow := NewRollingWindow(2, span)
+				clock := &fakeClock{current: time.Unix(0, 0)}
+				rollingWindow := newRollingWindow(2, span, clock.Now)
 				rollingWindow.Add(1 << 0)
 				rollingWindow.Add(1 << 1)
 				return rollingWindow
@@ -27,10 +40,11 @@ func TestRollingWindow_Reduce(t *testing.T) {
 		}, {
 			name: "all buckets are invalid",
 			windowCreateFn: func() *RollingWindow {
-				rollingWindow := NewRollingWindow(2, span)
+				clock := &fakeClock{current: time.Unix(0, 0)}
+				rollingWindow := newRollingWindow(2, span, clock.Now)
 				rollingWindow.Add(1 << 0)
 				rollingWindow.Add(1 << 1)
-				time.Sleep(span)
+				clock.Advance(span)
 				return rollingWindow
 			},
 			wantCount: 0,
@@ -38,9 +52,10 @@ func TestRollingWindow_Reduce(t *testing.T) {
 		}, {
 			name: "case 3",
 			windowCreateFn: func() *RollingWindow {
-				rollingWindow := NewRollingWindow(2, span)
+				clock := &fakeClock{current: time.Unix(0, 0)}
+				rollingWindow := newRollingWindow(2, span, clock.Now)
 				rollingWindow.Add(1 << 0)
-				time.Sleep(span)
+				clock.Advance(span)
 				rollingWindow.Add(1 << 1)
 				return rollingWindow
 			},
@@ -49,11 +64,12 @@ func TestRollingWindow_Reduce(t *testing.T) {
 		}, {
 			name: "expire all buckets and add new buckets",
 			windowCreateFn: func() *RollingWindow {
-				rollingWindow := NewRollingWindow(2, span)
+				clock := &fakeClock{current: time.Unix(0, 0)}
+				rollingWindow := newRollingWindow(2, span, clock.Now)
 				rollingWindow.Add(1 << 0)
-				time.Sleep(span)
+				clock.Advance(span)
 				rollingWindow.Add(1 << 1)
-				time.Sleep(span * 3)
+				clock.Advance(span * 3)
 				rollingWindow.Add(1 << 2)
 				return rollingWindow
 			},
@@ -62,11 +78,12 @@ func TestRollingWindow_Reduce(t *testing.T) {
 		}, {
 			name: "reduce all expired buckets",
 			windowCreateFn: func() *RollingWindow {
-				rollingWindow := NewRollingWindow(2, span)
+				clock := &fakeClock{current: time.Unix(0, 0)}
+				rollingWindow := newRollingWindow(2, span, clock.Now)
 				rollingWindow.Add(1 << 0)
-				time.Sleep(span)
+				clock.Advance(span)
 				rollingWindow.Add(1 << 1)
-				time.Sleep(span * 3)
+				clock.Advance(span * 3)
 				return rollingWindow
 			},
 			wantCount: 0,

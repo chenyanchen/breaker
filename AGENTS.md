@@ -2,7 +2,7 @@
 
 ## Project Structure & Module Organization
 This repository is a multi-module Go project:
-- Root module (`go.mod`): core breaker implementation in `breaker.go`, `googlebreaker.go`, and internal helpers under `internal/` (`internal/rollingwindow`, `internal/rand`).
+- Root module (`go.mod`): core breaker implementation in `breaker.go`, `googlebreaker.go`, and internal helpers under `internal/` (`internal/rollingwindow`).
 - CLI module (`cmd/breaker-cli/`): code generator for interface-based breaker wrappers, with a single template source at `cmd/breaker-cli/breaker.gohtml` (embedded via `cmd/breaker-cli/template_embed.go`).
 - Example module (`example/`): runnable usage samples, with entrypoint at `example/cmd/main.go`.
 - CI and lint config: `.github/workflows/go.yml`, `.golangci.yaml`.
