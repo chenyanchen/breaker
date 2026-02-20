@@ -11,7 +11,7 @@ linters:
     - errcheck
     - errname
     - errorlint
-    - exportloopref
+    - copyloopvar
     - gochecknoglobals
     - gochecknoinits
     - gocritic
@@ -19,7 +19,7 @@ linters:
     - gofmt
     - gofumpt
     - goimports
-    - gomnd
+    - mnd
     - gosec
     - gosimple
     - govet
@@ -39,7 +39,7 @@ linters:
     - sqlclosecheck
     - staticcheck
     - stylecheck
-    - tenv
+    - usetesting
     - testableexamples
     - thelper
     - tparallel
