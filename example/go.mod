@@ -1,6 +1,6 @@
 module github.com/chenyanchen/breaker/example
 
-go 1.21.3
+go 1.22
 
 require (
 	github.com/chenyanchen/breaker v0.0.1
