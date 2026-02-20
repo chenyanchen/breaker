@@ -25,10 +25,15 @@ func main() {
 	output := flag.String("output", "", "The output file name, default to stdout")
 	flag.Parse()
 
-	cfg := &packages.Config{Mode: packages.NeedName | packages.NeedTypes | packages.NeedTypesInfo}
+	cfg := &packages.Config{
+		Mode: packages.NeedName | packages.NeedTypes | packages.NeedTypesInfo | packages.NeedSyntax,
+	}
 	file, err := packages.Load(cfg, *_package)
 	if err != nil {
 		log.Fatalf("load packages: %v", err)
+	}
+	if packages.PrintErrors(file) > 0 {
+		log.Fatalf("load packages failed")
 	}
 	//
 	if len(file) == 0 {
@@ -132,11 +137,12 @@ func main() {
 
 	// generate code
 	pkg := Package{
-		Name:    packageName,
-		Structs: []Struct{implementation},
+		Name:       packageName,
+		ImportPath: *_package,
+		Structs:    []Struct{implementation},
 	}
 
-	reader, err := generate(context.Background(), pkg)
+	reader, err := generate(context.Background(), pkg, *output)
 	if err != nil {
 		log.Fatalf("generate: %v", err)
 	}
@@ -267,10 +273,18 @@ func mapTypeName(pkg string, t *ast.MapType) string {
 	return fmt.Sprintf("map[%s]%s", key, value)
 }
 
-func generate(ctx context.Context, pkg Package) (io.Reader, error) {
+func parseBreakerTemplate() (*template.Template, error) {
 	tmpl, err := template.New("breaker.gohtml").Parse(breakerTemplate)
 	if err != nil {
 		return nil, fmt.Errorf("parse template: %w", err)
+	}
+	return tmpl, nil
+}
+
+func generate(ctx context.Context, pkg Package, filename string) (io.Reader, error) {
+	tmpl, err := parseBreakerTemplate()
+	if err != nil {
+		return nil, err
 	}
 
 	buf := &bytes.Buffer{}
@@ -278,7 +292,7 @@ func generate(ctx context.Context, pkg Package) (io.Reader, error) {
 		return nil, fmt.Errorf("execute template: %w", err)
 	}
 
-	data, err := imports.Process("", buf.Bytes(), nil)
+	data, err := imports.Process(filename, buf.Bytes(), nil)
 	if err != nil {
 		return nil, fmt.Errorf("goimports: %w", err)
 	}
@@ -297,8 +311,9 @@ func generate(ctx context.Context, pkg Package) (io.Reader, error) {
 }
 
 type Package struct {
-	Name    string
-	Structs []Struct
+	Name       string
+	ImportPath string
+	Structs    []Struct
 }
 
 type Struct struct {

@@ -23,19 +23,30 @@ type RollingWindow struct {
 
 	// last update time
 	lastTime time.Time
+
+	now func() time.Time
 }
 
 // NewRollingWindow returns a RollingWindow that with size buckets and time interval.
 func NewRollingWindow(size int, interval time.Duration) *RollingWindow {
+	return newRollingWindow(size, interval, time.Now)
+}
+
+func newRollingWindow(size int, interval time.Duration, now func() time.Time) *RollingWindow {
 	if size < 1 {
 		panic("size must be greater than 0")
+	}
+
+	if now == nil {
+		now = time.Now
 	}
 
 	w := &RollingWindow{
 		size:     size,
 		interval: interval,
 		buckets:  make([]*Bucket, size),
-		lastTime: time.Now(),
+		lastTime: now(),
+		now:      now,
 	}
 
 	for i := range w.buckets {
@@ -77,26 +88,31 @@ func (w *RollingWindow) updateOffset() {
 	w.offset = (w.offset + span) % w.size
 
 	// Update last update time.
-	w.lastTime = time.Now().Truncate(w.interval)
+	w.lastTime = w.now().Truncate(w.interval)
 }
 
 func (w *RollingWindow) Reduce(fn func(bucket *Bucket)) {
 	w.lock.RLock()
-	defer w.lock.RUnlock()
-
 	span := w.span()
 	if span >= w.size {
+		w.lock.RUnlock()
 		return
 	}
 
+	snapshot := make([]Bucket, 0, w.size-span)
 	for i := 0; i < w.size-span; i++ {
 		bucket := w.buckets[(w.offset+span+i)%w.size]
-		fn(bucket)
+		snapshot = append(snapshot, *bucket)
+	}
+	w.lock.RUnlock()
+
+	for i := range snapshot {
+		fn(&snapshot[i])
 	}
 }
 
 func (w *RollingWindow) span() int {
-	return int(time.Since(w.lastTime) / w.interval)
+	return int(w.now().Sub(w.lastTime) / w.interval)
 }
 
 type Bucket struct {
